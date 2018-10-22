@@ -22,12 +22,15 @@ namespace KinectRecognizeSample
     /// </summary>
     public partial class MainWindow : Window
     {
-
         KinectSensor kinect;
 
         ColorFrameReader colorFrameReader;
         FrameDescription colorFrameDesc;
         byte[] colorBuffer;
+
+        BodyFrameReader bodyFrameReader;
+        /// <summary> bodyデータ </summary>
+        Body[] bodies;
 
         public MainWindow()
         {
@@ -38,7 +41,6 @@ namespace KinectRecognizeSample
         {
             try
             {
-                // Kinectを開く
                 kinect = KinectSensor.GetDefault();
                 if (kinect == null)
                 {
@@ -49,10 +51,18 @@ namespace KinectRecognizeSample
 
                 // カラー画像の情報を作成する(BGRAフォーマット)
                 colorFrameDesc = kinect.ColorFrameSource.CreateFrameDescription(ColorImageFormat.Bgra);
-
+                
+                Console.WriteLine(colorFrameDesc.Width + "," + colorFrameDesc.Height);
                 // カラーリーダーを開く
                 colorFrameReader = kinect.ColorFrameSource.OpenReader();
                 colorFrameReader.FrameArrived += colorFrameReader_FrameArrived;
+
+                // Bodyを入れる配列を作る
+                bodies = new Body[kinect.BodyFrameSource.BodyCount];
+
+                // ボディーリーダーを開く
+                bodyFrameReader = kinect.BodyFrameSource.OpenReader();
+                bodyFrameReader.FrameArrived += bodyFrameReader_FrameArrived;
             }
             catch (Exception ex)
             {
@@ -63,11 +73,16 @@ namespace KinectRecognizeSample
 
         private void Window_Closing(object sender, System.ComponentModel.CancelEventArgs e)
         {
-            // 終了処理
             if (colorFrameReader != null)
             {
                 colorFrameReader.Dispose();
                 colorFrameReader = null;
+            }
+
+            if (bodyFrameReader != null)
+            {
+                bodyFrameReader.Dispose();
+                bodyFrameReader = null;
             }
 
             if (kinect != null)
@@ -77,7 +92,7 @@ namespace KinectRecognizeSample
             }
         }
 
-        void colorFrameReader_FrameArrived(object sender, ColorFrameArrivedEventArgs e)
+        private void colorFrameReader_FrameArrived(object sender, ColorFrameArrivedEventArgs e)
         {
             // カラーフレームを取得する
             using (var colorFrame = e.FrameReference.AcquireFrame())
@@ -95,6 +110,57 @@ namespace KinectRecognizeSample
                 ImageColor.Source = BitmapSource.Create(colorFrameDesc.Width, colorFrameDesc.Height, 96, 96,
                     PixelFormats.Bgra32, null, colorBuffer, colorFrameDesc.Width * (int)colorFrameDesc.BytesPerPixel);
             }
+        }
+
+        void bodyFrameReader_FrameArrived(object sender, BodyFrameArrivedEventArgs e)
+        {
+            UpdateBodyFrame(e);
+            DrawBodyFrame();
+        }
+
+        // ボディの更新
+        private void UpdateBodyFrame(BodyFrameArrivedEventArgs e)
+        {
+            using (var bodyFrame = e.FrameReference.AcquireFrame())
+            {
+                if (bodyFrame == null)
+                {
+                    return;
+                }
+
+                // ボディデータを取得する
+                bodyFrame.GetAndRefreshBodyData(bodies);
+            }
+        }
+
+        // ボディの表示
+        private void DrawBodyFrame()
+        {
+            CanvasBody.Children.Clear();
+            var d = bodies[0].Joints[JointType.HandRight];
+            if (d.TrackingState == TrackingState.Tracked) DrawEllipse(d, 10, Brushes.Blue);
+        }
+
+        private void DrawEllipse(Joint joint, int R, Brush brush)
+        {
+            var ellipse = new Ellipse()
+            {
+                Width = R,
+                Height = R,
+                Fill = brush,
+            };
+
+            // カメラ座標系をDepth座標系に変換する
+            var point = kinect.CoordinateMapper.MapCameraPointToColorSpace(joint.Position);
+            if ((point.X < 0) || (point.Y < 0))
+            {
+                return;
+            }
+
+            Canvas.SetLeft(ellipse, (point.X - (R / 2))/2);
+            Canvas.SetTop(ellipse, (point.Y - (R / 2))/2);
+
+            CanvasBody.Children.Add(ellipse);
         }
     }
 }

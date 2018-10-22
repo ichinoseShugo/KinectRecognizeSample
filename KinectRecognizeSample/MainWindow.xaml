@@ -6,7 +6,16 @@
         xmlns:local="clr-namespace:KinectRecognizeSample"
         mc:Ignorable="d"
         Title="MainWindow" SizeToContent="WidthAndHeight" Loaded="Window_Loaded" Closing="Window_Closing">
-    <Grid>
-        <Image x:Name="ImageColor" Width="960" Height="540" />
-    </Grid>
+    <StackPanel>
+        <Grid>
+            <Image x:Name="ImageColor" Width="960" Height="540" />
+            <Canvas x:Name="CanvasBody"  Width="960" Height="540"/>
+        </Grid>
+        <StackPanel Orientation="Vertical">
+            <TextBlock x:Name="Normal" Text="a"/>
+            <TextBlock x:Name="Camera" Text="a"/>
+            <TextBlock x:Name="Color" Text="a"/>
+            <TextBlock x:Name="Depth" Text="a"/>
+        </StackPanel>
+    </StackPanel>
 </Window>
