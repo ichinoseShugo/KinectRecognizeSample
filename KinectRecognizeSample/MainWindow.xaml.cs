@@ -132,13 +132,45 @@ namespace KinectRecognizeSample
                 bodyFrame.GetAndRefreshBodyData(bodies);
             }
         }
-
-        // ボディの表示
+        
         private void DrawBodyFrame()
         {
             CanvasBody.Children.Clear();
-            var d = bodies[0].Joints[JointType.HandRight];
-            if (d.TrackingState == TrackingState.Tracked) DrawEllipse(d, 10, Brushes.Blue);
+
+            var rHand = bodies[0].Joints[JointType.HandRight];
+            if (rHand.TrackingState == TrackingState.Tracked)
+            {
+                TapCheck(rHand);
+                DrawEllipse(rHand, 10, Brushes.Blue);
+            }
+        }
+
+        /// <summary> 5000mG = 49.03325 (m/s^2) </summary>
+        double border = 0;
+        bool over = false;
+        System.Diagnostics.Stopwatch sw = new System.Diagnostics.Stopwatch();
+        // ジェスチャの確認
+        private void TapCheck(Joint joint)
+        {
+            double a = Math.Sqrt(
+                Math.Pow(joint.Position.X, 2) +
+                Math.Pow(joint.Position.Y, 2) +
+                Math.Pow(joint.Position.Z, 2)
+                );
+
+            if (a > border && over == false)
+            {
+                sw.Start();
+                over = true;
+                return;
+            }
+
+            if (a < border && sw.ElapsedMilliseconds > 15 && sw.ElapsedMilliseconds < 25)
+            {
+                Console.Beep(440, 500);
+                over = false;
+                sw.Reset();
+            }
         }
 
         private void DrawEllipse(Joint joint, int R, Brush brush)
